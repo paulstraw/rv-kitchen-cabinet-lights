@@ -5,40 +5,39 @@
 #define CLOCKPIN 3
 #define DATAPIN 4
 
-int ledPin = 1;
 int configModeTimeout = 3000;
 bool configMode = false;
-Adafruit_DotStar strip = Adafruit_DotStar(NUMPIXELS, DATAPIN, CLOCKPIN);
+Adafruit_DotStar strip = Adafruit_DotStar(NUMPIXELS, DATAPIN, CLOCKPIN, DOTSTAR_BGR);
 
 int red = 255;
-int green = 239;
-int blue = 223;
+int green = 143;
+int blue = 79;
 int colorIncrementAmount = 16;
 
 int leftDoorPin = 0;
-int leftDoorLightOffset = 20;
-int leftDoorLightCount = 10;
+int leftDoorLightOffset = 22;
+int leftDoorLightCount = 8;
 bool leftDoorOpen = false;
-bool leftDoorJustClosed = false;
+bool leftDoorJustOpened = false;
 
 int centerDoorPin = 1;
 int centerDoorLightOffset = 10;
-int centerDoorLightCount = 10;
+int centerDoorLightCount = 12;
 bool centerDoorOpen = false;
-bool centerDoorJustClosed = false;
+bool centerDoorJustOpened = false;
 
 int rightDoorPin = 2;
-int rightDoorLightOffset = 10;
+int rightDoorLightOffset = 0;
 int rightDoorLightCount = 10;
 bool rightDoorOpen = false;
-bool rightDoorJustClosed = false;
+bool rightDoorJustOpened = false;
 
 bool allDoorsOpen = false;
 unsigned long allDoorsOpenedAt = 0;
 
 void setup() {
   pinMode(leftDoorPin, INPUT_PULLUP);
-  pinMode(centerDoorPin, INPUT_PULLUP);
+  pinMode(centerDoorPin, INPUT);
   pinMode(rightDoorPin, INPUT_PULLUP);
 
   strip.begin();
@@ -57,44 +56,71 @@ void loop() {
 }
 
 void setDoorStates() {
-  leftDoorJustClosed = leftDoorOpen && digitalRead(leftDoorPin) == HIGH;
-  centerDoorJustClosed = centerDoorOpen && digitalRead(centerDoorPin) == HIGH;
-  rightDoorJustClosed = rightDoorOpen && digitalRead(rightDoorPin) == HIGH;
+  // Center door pin reversed:
+  // https://learn.adafruit.com/tap-tempo-trinket/things-learned
+
+  leftDoorJustOpened = !leftDoorOpen && digitalRead(leftDoorPin) == LOW;
+  centerDoorJustOpened = !centerDoorOpen && digitalRead(centerDoorPin) == HIGH;
+  rightDoorJustOpened = !rightDoorOpen && digitalRead(rightDoorPin) == LOW;
 
   leftDoorOpen = digitalRead(leftDoorPin) == LOW;
-  centerDoorOpen = digitalRead(centerDoorPin) == LOW;
+  centerDoorOpen = digitalRead(centerDoorPin) == HIGH;
   rightDoorOpen = digitalRead(rightDoorPin) == LOW;
 }
 
 void updateMode() {
-  if (leftDoorOpen && centerDoorOpen && rightDoorOpen)
+  if (configMode)
   {
-    allDoorsOpen = true;
-    allDoorsOpenedAt = millis();
+    if (!leftDoorOpen && !centerDoorOpen && !rightDoorOpen)
+    {
+      allDoorsOpen = false;
+      allDoorsOpenedAt = 0;
+    }
   }
   else
   {
-    allDoorsOpen = false;
+    if (leftDoorOpen && centerDoorOpen && rightDoorOpen)
+    {
+      allDoorsOpen = true;
+
+      if (allDoorsOpenedAt == 0)
+      {
+        allDoorsOpenedAt = millis();
+      }
+    }
+    else
+    {
+      allDoorsOpen = false;
+      allDoorsOpenedAt = 0;
+    }
   }
 
-  if (allDoorsOpen && (millis() - allDoorsOpenedAt > configModeTimeout))
+
+  if (
+    allDoorsOpen &&
+    allDoorsOpenedAt != 0 &&
+    (millis() - allDoorsOpenedAt > configModeTimeout)
+  )
   {
-    configMode = true;
-
     // Flash lights when entering config mode
-    for(size_t i = 0; i < 3; i++)
-    {
-      strip.clear();
-      strip.show();
-      delay(100);
-
-      for(size_t i = 0; i < NUMPIXELS; i++)
+    if (!configMode) {
+      for(size_t i = 0; i < 3; i++)
       {
-        strip.setPixelColor(i, red, green, blue);
+        strip.clear();
+        strip.show();
+        delay(100);
+
+        for(size_t i = 0; i < NUMPIXELS; i++)
+        {
+          strip.setPixelColor(i, red, green, blue);
+        }
+        strip.show();
+        delay(100);
       }
-      strip.show();
-      delay(100);
     }
+
+
+    configMode = true;
   }
   else
   {
@@ -103,15 +129,15 @@ void updateMode() {
 }
 
 void configLoop() {
-  if (leftDoorJustClosed) {
+  if (leftDoorJustOpened) {
     red = (red + colorIncrementAmount) % 255;
   }
 
-  if (centerDoorJustClosed) {
+  if (centerDoorJustOpened) {
     green = (green + colorIncrementAmount) % 255;
   }
 
-  if (rightDoorJustClosed) {
+  if (rightDoorJustOpened) {
     blue = (blue + colorIncrementAmount) % 255;
   }
 
