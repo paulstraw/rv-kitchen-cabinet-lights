@@ -1,0 +1,5 @@
+{
+    "sketch": "kitchen-cabinet-lights.ino",
+    "board": "adafruit:avr:trinket5",
+    "port": "/dev/cu.SOC"
+}
